@@ -1,0 +1,17 @@
+{
+  "name": "utube_clone_backend_apis",
+  "version": "1.0.0",
+  "description": "utube clone backend",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "javascript",
+    "backend",
+    "nodejs",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC"
+}
