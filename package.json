@@ -2,9 +2,10 @@
   "name": "utube_clone_backend_apis",
   "version": "1.0.0",
   "description": "utube clone backend",
-  "main": "index.js",
+  "main": "app.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon app.js"
   },
   "keywords": [
     "javascript",
@@ -13,5 +14,8 @@
     "express"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
 }
