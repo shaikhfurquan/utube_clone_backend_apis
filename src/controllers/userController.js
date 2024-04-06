@@ -23,16 +23,23 @@ export const registerUser = async (req, res) => {
             $or: [{ userName }, { email }]
         })
         if (existedUser) {
-            return ApiValidationError(res, "Already registered with this username or email address.",400)
+            return ApiValidationError(res, "Already registered with this username or email address.", 400)
         }
 
-        const avatarLocalPath = req.files?.avatar[0]?.path
-        const coverImageLocalPath = req.files?.coverImage[0]?.path
-
-
-        if (!avatarLocalPath) {
-            return ApiValidationError(res, "Avatar file is required!", 400)
+        let avatarLocalPath;
+        if (req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
+            avatarLocalPath = req.files.avatar[0].path;
+        } else {
+            return ApiValidationError(res, "Avatar file is required!", 400);
         }
+        
+
+
+        let coverImageLocalPath;
+        if (req.files && Array.isArray(req.files.coverImage && req.files.coverImage.length > 0)) {
+            coverImageLocalPath = req.files.coverImage[0].path
+        }
+
 
         // uploading on the cloudinary
         const avatar = await uploadOnCloudinary(avatarLocalPath)
@@ -56,10 +63,10 @@ export const registerUser = async (req, res) => {
         // check createdUser
         const createdUser = await UserModel.findById(createUser._id).select("-password -refreshToken")
         if (!createdUser) {
-            return ApiValidationError(res, "Something went wrong while creating user!" , 500)
+            return ApiValidationError(res, "Something went wrong while creating user!", 500)
         }
 
-        return ApiSuccessResponse(res,  "User created successfully", createdUser,201);
+        return ApiSuccessResponse(res, "User created successfully", createdUser, 201);
     } catch (error) {
         ApiCatchError(res, 'Error creating user', error, 500);
     }
