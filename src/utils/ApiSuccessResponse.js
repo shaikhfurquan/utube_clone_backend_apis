@@ -1,9 +1,9 @@
 
-export const ApiSuccessResponse = (res, data, message = "Success", statusCode = 200) => {
+export const ApiSuccessResponse = (res, message = "Success", data, statusCode = 200) => {
     return res.status(statusCode).json({
         success: true,
+        message: message,
         data: data,
-        message: message
     });
 };
 
