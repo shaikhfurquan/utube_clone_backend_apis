@@ -26,6 +26,7 @@ export const registerUser = async (req, res) => {
             return ApiValidationError(res, "Already registered with this username or email address.", 400)
         }
 
+        // avatar file validation
         let avatarLocalPath;
         if (req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
             avatarLocalPath = req.files.avatar[0].path;
@@ -33,22 +34,17 @@ export const registerUser = async (req, res) => {
             return ApiValidationError(res, "Avatar file is required!", 400);
         }
         
-
-
+        // cover image file validation
         let coverImageLocalPath;
         if (req.files && Array.isArray(req.files.coverImage && req.files.coverImage.length > 0)) {
             coverImageLocalPath = req.files.coverImage[0].path
         }
-
 
         // uploading on the cloudinary
         const avatar = await uploadOnCloudinary(avatarLocalPath)
         // console.log('...',avatar);
         const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-        if (!avatar) {
-            return ApiValidationError(res, "Avatar file is required!", 400)
-        }
 
         // creating user
         const createUser = await UserModel.create({
