@@ -6,6 +6,25 @@ import { ApiSuccessResponse } from '../utils/ApiSuccessResponse.js'
 import { uploadOnCloudinary } from '../utils/uploadCloudinary.js'
 
 
+// generating the access and refresh tokens
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        // finding the user
+        const user = await UserModel.findById(userId)
+
+        const accessToken = user.generateAccessToken() // giving access token to the user
+        const refreshToken = user.generateRefreshToken() // saving the refresh token in database
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return {accessToken , refreshToken}
+
+    } catch (error) {
+        return ApiCatchError(res, "Error while generating access and refresh tokens")
+    }
+}
+
 export const registerUser = async (req, res) => {
 
     try {
@@ -33,7 +52,7 @@ export const registerUser = async (req, res) => {
         } else {
             return ApiValidationError(res, "Avatar file is required!", 400);
         }
-        
+
         // cover image file validation
         let coverImageLocalPath;
         if (req.files && Array.isArray(req.files.coverImage && req.files.coverImage.length > 0)) {
@@ -64,6 +83,51 @@ export const registerUser = async (req, res) => {
 
         return ApiSuccessResponse(res, "User created successfully", createdUser, 201);
     } catch (error) {
-        ApiCatchError(res, 'Error creating user', error, 500);
+        ApiCatchError(res, 'Error while creating user', error, 500);
+    }
+}
+
+
+export const loginUser = async (req, res) => {
+    try {
+        const { email, userName, password } = req.body
+        if (!email || !userName || !password) {
+            const errorMessage = !email || !userName ? "userName or email is required" : "password is required";
+            return ApiValidationError(res, errorMessage, 404);
+        }
+
+
+        const user = await UserModel.findOne({
+            $or: [{ userName }, { email }]
+        })
+        if (!user) {
+            return ApiValidationError(res, "User does not exist, register first", 400)
+        }
+
+        const isPasswordValid = await user.isPasswordCorrect(password)
+        if (!isPasswordValid) {
+            return ApiValidationError(res, "Invalid credentials", 401)
+        }
+
+        
+        console.log(generateAccessAndRefreshTokens(user._id));
+        const{accessToken , refreshToken} = await generateAccessAndRefreshTokens(user._id)
+
+        const loggedInUser = await UserModel.findById(user._id).select("-password , -refreshToken")
+
+        // sending the token into the cookie
+        const options = {
+            httpOnly : true,
+            secure : true
+        }
+
+        return res.status(200)
+        .cookie("accessToken" , accessToken , options)
+        .cookie("refreshToken" , refreshToken , options).json(
+            ApiSuccessResponse({user : loggedInUser , accessToken, refreshToken} , `Welcome ${user.userName || user.email}` , 200) 
+        );
+
+    } catch (error) {
+        ApiCatchError(res, 'Error while login user', error, 500);
     }
 }
