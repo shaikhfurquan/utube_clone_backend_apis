@@ -1,6 +1,7 @@
 import express from 'express';
-import { loginUser, registerUser } from '../controllers/userController.js';
+import { loginUser, logoutUser, registerUser } from '../controllers/userController.js';
 import { upload } from '../middlewares/multerMiddleware.js'
+import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
 const userRouter = express.Router();
 
@@ -20,5 +21,6 @@ userRouter.post('/register',
 )
 
 userRouter.post('/login' , loginUser)
+userRouter.post('/logout' , isAuthenticated ,logoutUser)
 
 export default userRouter
