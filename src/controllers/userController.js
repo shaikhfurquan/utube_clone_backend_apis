@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.js'
 import { ApiCatchError } from '../utils/ApiCatchError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { uploadOnCloudinary } from '../utils/uploadCloudinary.js'
+import JWT from 'jsonwebtoken'
 
 
 // generating the access and refresh tokens
@@ -156,5 +157,242 @@ export const logoutUser = async (req, res) => {
 
     } catch (error) {
         ApiCatchError(res, 'Error while logout user', error, 500);
+    }
+}
+
+
+export const refreshAccessToken = async (req, res) => {
+    try {
+        console.log(req.cookies);
+        const inComingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+        if (!inComingRefreshToken) {
+            throw new ApiError(404, "Unauthorized request")
+        }
+
+        const decodedToken = JWT.verify(inComingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+        const user = await UserModel.findById(decodedToken?._id)
+        if (!user) {
+            throw new ApiError(401, "Invalid refresh token")
+        }
+
+        // Matching these two tokens incomingrefreshToken and user token
+        if (inComingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Invalid refresh token is expired or used")
+        }
+
+        // if these two are right we will generate new one 
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+        const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
+
+        return res.status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(new ApiResponse(200, { accessToken, refreshToken: newRefreshToken }));
+
+    } catch (error) {
+        ApiCatchError(res, 'Error while generating refresh token user', error, 500);
+    }
+}
+
+
+export const changeCurrentUserPassword = async (req, res) => {
+    try {
+
+        const { oldPassword, newPassword } = req.body
+        const user = await UserModel.findById(req.user?._id)
+        if (!user) {
+            throw new ApiError(404, "User not found. With this Id")
+        }
+
+        const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+        if (!isPasswordCorrect) {
+            throw new ApiError(400, 'Invalid password')
+        }
+
+        user.password = newPassword
+        await user.save({ validateBeforeSave: false })
+
+        return res.status(200).json(new ApiResponse(200, {}, "password changed successfully"))
+
+    } catch (error) {
+        ApiCatchError(res, 'Error while changing the current user password', error, 500);
+    }
+}
+
+
+export const getCurrentUser = async (req, res) => {
+    try {
+        const currentUser = req.user
+        return res.status(200).json(new ApiResponse(200, currentUser, "Profile fetch successfully"))
+
+    } catch (error) {
+        ApiCatchError(res, 'Error while fetching current user profile', error, 500);
+    }
+}
+
+
+export const updateAccountDetails = async (req, res) => {
+    try {
+        const { fullName, email } = req.body
+        if (!fullName || !email) {
+            throw new ApiError(404, "All fields must be provided")
+        }
+
+        const updatedUser = await UserModel.findByIdAndUpdate(req.user?._id,
+            {
+                $set: {
+                    fullName,
+                    email
+                }
+            },
+            { new: true }
+        ).select("-password")
+
+        return res.status(200).json(new ApiResponse(200, updatedUser, "account details updated successfully"));
+    } catch (error) {
+        ApiCatchError(res, 'Error while updating account details', error, 500);
+    }
+}
+
+
+export const updateUserAvatar = async (req, res) => {
+    try {
+        const avatarLocalPath = req.file?.path
+        if (!avatarLocalPath) {
+            throw new ApiError(400, 'Avata file is missing')
+        }
+
+        const avatar = uploadOnCloudinary(avatarLocalPath)
+        if (!avatar.url) {
+            throw new ApiError(400, 'Error while uploading avatar to cloudinary')
+        }
+
+        const user = await UserModel.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set: {
+                    avatar: avatar.url
+                }
+            },
+            { new: true }
+        ).select('-password')
+
+
+        return res.status(200).json(new ApiResponse(200, user, 'Avatar image updated successfully'))
+    } catch (error) {
+        ApiCatchError(res, 'Error while updating avatar', error, 500);
+    }
+}
+
+
+export const updateUserCoverImage = async (req, res) => {
+    try {
+        const coverImageLocalPath = req.file?.path
+        if (!coverImageLocalPath) {
+            throw new ApiError(400, 'Cover image is missing')
+        }
+
+        const coverImage = uploadOnCloudinary(coverImageLocalPath)
+        if (!coverImage.url) {
+            throw new ApiError(400, 'Error while uploading coverImage to cloudinary')
+        }
+
+        const user = await UserModel.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set: {
+                    coverImage: coverImage.url
+                }
+            },
+            { new: true }
+        ).select('-password')
+
+        return res.status(200).json(new ApiResponse(200, user, 'Cover image updated successfully'))
+
+    } catch (error) {
+        ApiCatchError(res, 'Error while updating coverImage', error, 500);
+    }
+}
+
+export const getUserChennelProfile = async (req, res) => {
+    try {
+
+        const { userName } = req.params
+        if (!userName?.trim()) {
+            throw new ApiError(400, 'User name is missing')
+        }
+
+        const channel = await UserModel.aggregate([
+            // getting(matching) username like(cac)
+            {
+                $match: {
+                    userName: userName?.toLowerCase()
+                }
+            },
+            // getting(count) through chennel subscriber of(cac)
+            {
+                $lookup: {
+                    from: 'subscription',
+                    localField: _id,
+                    foreignField: 'chennel',
+                    as: 'subscribers'
+                }
+
+            },
+            // getting how many i have subscribed through subscriber
+            {
+                $lookup: {
+                    from: 'subscription',
+                    localField: _id,
+                    foreignField: 'subscriber',
+                    as: 'subscribedTo'
+                }
+            },
+            //adding fields in original user
+            {
+                $addFields: {
+                    subsribersCount: {
+                        $size: '$subscribers'
+                    },
+                    chennelSubscribedToCount: {
+                        $size: '$subscribedTo'
+                    },
+                    isSubscribed: {
+                        $cond: {
+                            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            // providing details to the ui
+            {
+                $project: {
+                    fullName: 1,
+                    userName: 1,
+                    subsribersCount: 1,
+                    chennelSubscribedToCount: 1,
+                    isSubscribed: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    email: 1
+                }
+            }
+        ])
+
+        if (!channel?.length) {
+            throw new ApiError(404, 'Channel does not exists')
+        }
+
+        return res.status(200).json(
+            new ApiResponse(200, channel[0], 'User chennel fetched successfully')
+        )
+    } catch (error) {
+        ApiCatchError(res, 'Error while getting the chennel profile', error, 500);
     }
 }

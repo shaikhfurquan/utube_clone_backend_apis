@@ -1,5 +1,5 @@
 import express from 'express';
-import { loginUser, logoutUser, registerUser } from '../controllers/userController.js';
+import { loginUser, logoutUser, refreshAccessToken, registerUser } from '../controllers/userController.js';
 import { upload } from '../middlewares/multerMiddleware.js'
 import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
@@ -22,5 +22,6 @@ userRouter.post('/register',
 
 userRouter.post('/login' , loginUser)
 userRouter.post('/logout' , isAuthenticated ,logoutUser)
+userRouter.post('/refresh-token' ,refreshAccessToken)
 
 export default userRouter
