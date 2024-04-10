@@ -5,6 +5,7 @@ import { ApiCatchError } from '../utils/ApiCatchError.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import { uploadOnCloudinary } from '../utils/uploadCloudinary.js'
 import JWT from 'jsonwebtoken'
+import mongoose from 'mongoose'
 
 
 // generating the access and refresh tokens
@@ -394,5 +395,57 @@ export const getUserChennelProfile = async (req, res) => {
         )
     } catch (error) {
         ApiCatchError(res, 'Error while getting the chennel profile', error, 500);
+    }
+}
+
+
+export const getwatchHistory = async (req, res) => {
+    try {
+        const user = await UserModel.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(req.user._id)
+                }
+            },
+            {
+                $lookup: {
+                    from: 'Videos',
+                    localField: 'watchHistory',
+                    foreignField: "_id",
+                    as: 'watchHistory',
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: 'users',
+                                localField: 'owner',
+                                foreignField: '_id',
+                                as: 'owner',
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            userName: 1,
+                                            avatar: 1
+                                        }
+                                    },
+                                    {
+                                        $addFields: {
+                                            owner: {
+                                                $first: '$owner'
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ])
+        return res.status(200).json(
+            new ApiResponse(200 , user[0].getwatchHistory , 'watch history fetched successfully')
+        )
+    } catch (error) {
+        ApiCatchError(res, 'Error while getting watch history', error, 500);
     }
 }
