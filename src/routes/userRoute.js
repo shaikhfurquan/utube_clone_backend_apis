@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeCurrentUserPassword, loginUser, logoutUser, refreshAccessToken, registerUser } from '../controllers/userController.js';
+import { changeCurrentUserPassword, getCurrentUser, loginUser, logoutUser, refreshAccessToken, registerUser } from '../controllers/userController.js';
 import { upload } from '../middlewares/multerMiddleware.js'
 import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
@@ -25,6 +25,8 @@ userRouter.post('/logout' , isAuthenticated ,logoutUser)
 userRouter.post('/refresh-token' ,refreshAccessToken)
 
 userRouter.post('/change-password' , isAuthenticated , changeCurrentUserPassword)
+
+userRouter.get('/current-user' , isAuthenticated , getCurrentUser)
 
 
 export default userRouter
