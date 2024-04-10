@@ -1,5 +1,5 @@
 import express from 'express';
-import { changeCurrentUserPassword, getCurrentUser, getUserChennelProfile, loginUser, logoutUser, refreshAccessToken, registerUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage } from '../controllers/userController.js';
+import { changeCurrentUserPassword, getCurrentUser, getUserChennelProfile, getwatchHistory, loginUser, logoutUser, refreshAccessToken, registerUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage } from '../controllers/userController.js';
 import { upload } from '../middlewares/multerMiddleware.js'
 import { isAuthenticated } from '../middlewares/authMiddleware.js';
 
@@ -35,4 +35,7 @@ userRouter.patch('/update-avatar' , isAuthenticated , upload.single('avatar') , 
 userRouter.patch('/update-cover-image' , isAuthenticated , upload.single('coverImage') , updateUserCoverImage)
 
 userRouter.get('/c/:userName' , isAuthenticated , getUserChennelProfile)
+
+userRouter.get('/watch-history' , isAuthenticated , getwatchHistory)
+
 export default userRouter
